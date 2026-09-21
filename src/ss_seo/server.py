@@ -31,6 +31,26 @@ class APIHandler(BaseHTTPRequestHandler):
         else:
             self._send_json(404, {"error": "not_found"})
 
+    def do_HEAD(self) -> None:
+        if self.path == "/health":
+            payload = {"status": "ok", "service": "ss-seo"}
+        elif self.path == "/":
+            payload = None
+        else:
+            self.send_response(404)
+            self.end_headers()
+            return
+        if payload is None:
+            body_length = len((Path(__file__).resolve().parents[2] / "web" / "index.html").read_bytes())
+            content_type = "text/html; charset=utf-8"
+        else:
+            body_length = len(json.dumps(payload).encode("utf-8"))
+            content_type = "application/json"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(body_length))
+        self.end_headers()
+
     def do_POST(self) -> None:
         if self.path != "/audit":
             self._send_json(404, {"error": "not_found"})
