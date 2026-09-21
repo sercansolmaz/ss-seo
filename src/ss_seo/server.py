@@ -49,3 +49,7 @@ class APIHandler(BaseHTTPRequestHandler):
 
 def serve(host: str = "127.0.0.1", port: int = 8787) -> None:
     HTTPServer((host, port), APIHandler).serve_forever()
+
+
+if __name__ == "__main__":
+    serve(host="0.0.0.0", port=8787)
