@@ -10,3 +10,6 @@ requires-python = ">=3.9"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.scripts]
+ss-seo-audit = "ss_seo.cli:main"
