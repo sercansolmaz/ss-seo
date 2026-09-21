@@ -5,11 +5,13 @@ from ss_seo.parser import parse_html, parse_robots, parse_sitemap
 
 class ParserTests(unittest.TestCase):
     def test_html_observation(self):
-        page = b'<title>Home</title><meta name="description" content="Desc"><h1>Main</h1><a href="/about">About</a><img src="/x.png">'
+        page = b'<title>Home</title><meta name="description" content="Desc"><meta name="robots" content="noindex"><link rel="canonical" href="/"> <h1>Main</h1><a href="/about">About</a><img src="/x.png">'
         result = parse_html(page, "https://example.com/")
         self.assertEqual(result.title, "Home")
         self.assertEqual(result.links, ["https://example.com/about"])
         self.assertIsNone(result.images[0]["alt"])
+        self.assertEqual(result.canonicals, ["https://example.com/"])
+        self.assertEqual(result.robots_directives, ["noindex"])
 
     def test_robots_and_sitemap(self):
         robots = parse_robots(b"User-agent: *\nDisallow: /private\nSitemap: https://example.com/sitemap.xml")
@@ -20,4 +22,3 @@ class ParserTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

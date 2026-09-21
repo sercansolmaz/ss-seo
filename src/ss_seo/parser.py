@@ -18,6 +18,8 @@ class HTMLObservation:
     links: list[str] = field(default_factory=list)
     images: list[dict[str, str | None]] = field(default_factory=list)
     json_ld: list[str] = field(default_factory=list)
+    canonicals: list[str] = field(default_factory=list)
+    robots_directives: list[str] = field(default_factory=list)
 
 
 class _PageParser(HTMLParser):
@@ -39,6 +41,10 @@ class _PageParser(HTMLParser):
             self._active, self._buffer = tag, []
         elif tag == "meta" and values.get("name", "").lower() == "description":
             self.observation.description = values.get("content")
+        elif tag == "meta" and values.get("name", "").lower() == "robots" and values.get("content"):
+            self.observation.robots_directives.extend(part.strip().lower() for part in values["content"].split(","))
+        elif tag == "link" and values.get("rel", "").lower() == "canonical" and values.get("href"):
+            self.observation.canonicals.append(urljoin(self.base_url, values["href"]))
         elif tag == "a" and values.get("href"):
             self.observation.links.append(urljoin(self.base_url, values["href"]))
         elif tag == "img" and values.get("src"):
@@ -98,4 +104,3 @@ def parse_sitemap(body: bytes) -> dict[str, list[str]]:
     if tag == "sitemapindex":
         return {"sitemaps": values, "urls": []}
     return {"sitemaps": [], "urls": values}
-
