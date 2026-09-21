@@ -13,3 +13,4 @@ where = ["src"]
 
 [project.scripts]
 ss-seo-audit = "ss_seo.cli:main"
+ss-seo-server = "ss_seo.server:serve"
