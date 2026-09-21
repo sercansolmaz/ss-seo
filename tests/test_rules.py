@@ -21,7 +21,14 @@ class RuleTests(unittest.TestCase):
         self.assertIn("IMAGE-001", ids)
         self.assertTrue(all(issue.evidence for issue in issues))
 
+    def test_duplicate_titles_are_grouped(self):
+        pages = []
+        for path in ("/a", "/b"):
+            url = "https://example.com" + path
+            pages.append(CrawledPage(CrawlItem(url), FetchResult(requested_url=url, status_code=200), parse_html(b"<title>Same</title>", url)))
+        issues = analyze(CrawlResult(pages=pages))
+        self.assertEqual(sum(issue.rule_id == "ONPAGE-002" for issue in issues), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
-
