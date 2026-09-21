@@ -20,6 +20,7 @@ class HTMLObservation:
     json_ld: list[str] = field(default_factory=list)
     canonicals: list[str] = field(default_factory=list)
     robots_directives: list[str] = field(default_factory=list)
+    author: str | None = None
 
 
 class _PageParser(HTMLParser):
@@ -43,6 +44,8 @@ class _PageParser(HTMLParser):
             self.observation.description = values.get("content")
         elif tag == "meta" and values.get("name", "").lower() == "robots" and values.get("content"):
             self.observation.robots_directives.extend(part.strip().lower() for part in values["content"].split(","))
+        elif tag == "meta" and values.get("name", "").lower() in {"author", "article:author"}:
+            self.observation.author = values.get("content")
         elif tag == "link" and values.get("rel", "").lower() == "canonical" and values.get("href"):
             self.observation.canonicals.append(urljoin(self.base_url, values["href"]))
         elif tag == "a" and values.get("href"):
