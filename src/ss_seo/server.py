@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from .api import audit_payload
@@ -18,7 +19,14 @@ class APIHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:
-        if self.path == "/health":
+        if self.path == "/":
+            body = (Path(__file__).resolve().parents[2] / "web" / "index.html").read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/health":
             self._send_json(200, {"status": "ok", "service": "ss-seo"})
         else:
             self._send_json(404, {"error": "not_found"})
@@ -41,4 +49,3 @@ class APIHandler(BaseHTTPRequestHandler):
 
 def serve(host: str = "127.0.0.1", port: int = 8787) -> None:
     HTTPServer((host, port), APIHandler).serve_forever()
-

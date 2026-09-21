@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SS SEO Intelligence</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #0b1020; color: #eef2ff; }
+    body { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+    .brand { font-size: 24px; font-weight: 700; } .muted { color: #9ba5c3; }
+    .card { background: #151d34; border: 1px solid #293452; border-radius: 14px; padding: 20px; margin-bottom: 18px; }
+    form { display: flex; gap: 10px; } input { flex: 1; background: #0f162a; color: inherit; border: 1px solid #354264; border-radius: 8px; padding: 12px; }
+    button { background: #6d7cff; border: 0; color: white; border-radius: 8px; padding: 12px 18px; cursor: pointer; font-weight: 600; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; } .stat { background: #0f162a; padding: 16px; border-radius: 10px; }
+    .number { font-size: 26px; font-weight: 700; margin-top: 8px; } pre { white-space: pre-wrap; color: #c5d0ef; }
+    @media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } form { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header><div class="brand">SS SEO Intelligence</div><div class="muted">MVP local dashboard</div></header>
+  <section class="card">
+    <h2>New Audit</h2><p class="muted">Enter an owned domain to run a bounded audit.</p>
+    <form id="audit-form"><input id="url" type="url" placeholder="https://example.com" required><button>Run Audit</button></form>
+  </section>
+  <section id="result" class="card" hidden><h2>Audit Overview</h2><div id="stats" class="stats"></div><h3>Issues</h3><pre id="issues"></pre><h3>Fix Roadmap</h3><pre id="roadmap"></pre></section>
+  <script>
+    const form = document.querySelector('#audit-form');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const result = document.querySelector('#result'); result.hidden = false;
+      document.querySelector('#issues').textContent = 'Running audit...';
+      const response = await fetch('/audit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: document.querySelector('#url').value}) });
+      const data = await response.json();
+      if (!response.ok) { document.querySelector('#issues').textContent = data.error || 'Audit failed'; return; }
+      document.querySelector('#stats').innerHTML = Object.entries(data.summary).map(([key, value]) => `<div class="stat"><div class="muted">${key.replaceAll('_', ' ')}</div><div class="number">${value}</div></div>`).join('');
+      document.querySelector('#issues').textContent = data.issues.map(item => `${item.rule_id} [${item.severity}] ${item.url}\nEvidence: ${JSON.stringify(item.evidence)}`).join('\n\n') || 'No issues found';
+      document.querySelector('#roadmap').textContent = data.roadmap.map(item => `Phase ${item.phase}: ${item.title} — ${item.reason}`).join('\n') || 'No roadmap items';
+    });
+  </script>
+</body>
+</html>
