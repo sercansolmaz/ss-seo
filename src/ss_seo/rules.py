@@ -20,6 +20,34 @@ class RuleIssue:
     evidence: dict[str, object] = field(default_factory=dict)
 
 
+def analyze_sitemap_urls(sitemap_urls: list[str], result: CrawlResult) -> list[RuleIssue]:
+    """Compare sitemap members with fetched pages without inventing external data."""
+    by_requested = {page.item.url: page for page in result.pages}
+    issues: list[RuleIssue] = []
+    for raw_url in dict.fromkeys(sitemap_urls):
+        try:
+            url = normalize_url(raw_url)
+        except ValueError:
+            issues.append(RuleIssue("SITEMAP-010", "sitemap", "high", 100, 7, 2, raw_url, {"sitemap_url": raw_url, "reason": "invalid URL"}))
+            continue
+        page = by_requested.get(url)
+        if page is None:
+            continue
+        status = page.fetch.status_code
+        if status is not None and 300 <= status < 400:
+            issues.append(RuleIssue("SITEMAP-001", "sitemap", "high", 100, 8, 3, url, {"status_code": status, "final_url": page.fetch.final_url, "redirect_chain": page.fetch.redirect_chain}))
+        elif status is not None and status >= 500:
+            issues.append(RuleIssue("SITEMAP-005", "sitemap", "high", 100, 8, 4, url, {"status_code": status}))
+        elif status is not None and status >= 400:
+            issues.append(RuleIssue("SITEMAP-004", "sitemap", "high", 100, 7, 3, url, {"status_code": status}))
+        if page.html is not None:
+            if "noindex" in page.html.robots_directives:
+                issues.append(RuleIssue("SITEMAP-006", "sitemap", "high", 100, 7, 2, url, {"robots_directives": page.html.robots_directives}))
+            if page.html.canonicals and normalize_url(page.html.canonicals[0]) != url:
+                issues.append(RuleIssue("SITEMAP-007", "sitemap", "medium", 95, 6, 3, url, {"canonical": page.html.canonicals[0], "sitemap_url": url}))
+    return issues
+
+
 def analyze(result: CrawlResult) -> list[RuleIssue]:
     issues: list[RuleIssue] = []
     titles: dict[str, list[str]] = {}
