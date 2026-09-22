@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 import os
-import secrets
 import threading
+import urllib.parse
 import uuid
-from urllib.parse import urlencode
-from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
+from . import gsc
 from .api import audit_payload, payload_from_output
 from .crawl import Crawler
 from .discovery import robots_url, sitemap_candidates, sitemap_links
@@ -50,8 +50,118 @@ class APIHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    # -- Search Console helpers ------------------------------------------
+
+    def _gsc_html(self, status: int, title: str, message: str, extra_html: str = "") -> None:
+        body = (
+            "<!doctype html><html lang=\"tr\"><head><meta charset=\"utf-8\">"
+            f"<title>{title}</title>"
+            "<style>body{font-family:system-ui,sans-serif;background:#080d19;color:#e8eefc;"
+            "display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}"
+            ".box{background:#111a2c;border:1px solid #22304a;border-radius:14px;padding:32px 40px;"
+            "max-width:480px;text-align:center}h1{font-size:20px;margin:0 0 10px}"
+            "p{color:#8d9bb8;line-height:1.5;margin:8px 0}a{color:#7185ff}</style></head>"
+            f"<body><div class=\"box\"><h1>{title}</h1><p>{message}</p>{extra_html}</div></body></html>"
+        ).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _handle_gsc_callback(self) -> None:
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+        error = (params.get("error") or [None])[0]
+        code = (params.get("code") or [None])[0]
+        state = (params.get("state") or [None])[0]
+        if error:
+            self._gsc_html(400, "Yetkilendirme iptal edildi", f"Google hatası: {error}. Paneldeki Search Console sekmesinden tekrar deneyin.")
+            return
+        if not code or not state:
+            self._gsc_html(400, "Eksik parametre", "Google'dan gelen yanıt eksik: code veya state bulunamadı.")
+            return
+        if not gsc.consume_state(state):
+            self._gsc_html(400, "Oturum doğrulanamadı", "state bilgisi geçersiz ya da süresi dolmuş. Bağlantı ekranından işleme yeniden başlayın.")
+            return
+        try:
+            tokens = gsc.exchange_code(code)
+            store = gsc.TokenStore()
+            if not store.usable:
+                self._gsc_html(503, "Sunucu yapılandırması eksik", "TOKEN_ENCRYPTION_KEY tanımlı değil; token dosyası güvenle saklanamaz. Yöneticiye bildirin.")
+                return
+            store.save_tokens(tokens["access_token"], tokens.get("refresh_token"), int(tokens.get("expires_in", 3600)), tokens.get("scope", gsc.GSC_SCOPE))
+        except gsc.GscError as exc:
+            self._gsc_html(502, "Bağlantı tamamlanamadı", f"Ayrıntı: {exc}")
+            return
+        self._gsc_html(200, "Search Console bağlandı ✅", "Google Search Console hesabınız bağlandı. Sekmeyi kapatıp paneldeki Search Console ekranına dönebilirsiniz.", "<p><a href=\"/\">Panele dön</a></p>")
+
+    def _handle_gsc_status(self) -> None:
+        try:
+            store = gsc.TokenStore()
+            if not store.usable:
+                self._send_json(200, {"connected": False, "configured": bool(gsc.oauth_config()), "encryption_ready": False, "error": "TOKEN_ENCRYPTION_KEY tanımlı değil"})
+                return
+            record = store.load()
+            if record is None:
+                self._send_json(200, {"connected": False, "configured": bool(gsc.oauth_config()), "encryption_ready": True})
+                return
+            self._send_json(200, {
+                "connected": True,
+                "configured": True,
+                "encryption_ready": True,
+                "scope": record.get("scope"),
+                "connected_at": record.get("created_at"),
+                "updated_at": record.get("updated_at"),
+                "has_refresh_token": bool(record.get("refresh_token")),
+            })
+        except gsc.GscError as exc:
+            self._send_json(200, {"connected": False, "configured": bool(gsc.oauth_config()), "encryption_ready": store.usable, "error": str(exc)})
+
+    def _gsc_access_token_or_respond(self) -> str | None:
+        try:
+            store = gsc.TokenStore()
+            token = store.valid_access_token()
+        except gsc.GscError as exc:
+            self._send_json(exc.status, {"error": "search_console_error", "detail": str(exc)})
+            return None
+        if token is None:
+            self._send_json(401, {"error": "not_connected", "detail": "Search Console bağlı değil. Google ile bağlanın."})
+            return None
+        return token
+
+    def _handle_gsc_sites(self) -> None:
+        token = self._gsc_access_token_or_respond()
+        if token is None:
+            return
+        try:
+            sites = gsc.list_sites(token)
+            self._send_json(200, {"connected": True, "sites": sites})
+        except gsc.GscError as exc:
+            self._send_json(exc.status, {"error": "search_console_error", "detail": str(exc)})
+
+    def _handle_gsc_performance(self) -> None:
+        token = self._gsc_access_token_or_respond()
+        if token is None:
+            return
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+        site = (params.get("site") or [""])[0]
+        start = (params.get("start") or [""])[0]
+        end = (params.get("end") or [""])[0]
+        if not site or not start or not end:
+            self._send_json(400, {"error": "invalid_request", "detail": "site, start ve end parametreleri gerekli (YYYY-MM-DD)."})
+            return
+        try:
+            summary = gsc.performance_summary(token, site, start, end)
+            self._send_json(200, summary)
+        except gsc.GscError as exc:
+            self._send_json(exc.status, {"error": "search_console_error", "detail": str(exc)})
+
     def do_GET(self) -> None:
-        if self.path == "/":
+        route = urllib.parse.urlparse(self.path).path
+        if route == "/":
             web_root = Path(__file__).resolve().parents[2] / "web"
             body = (web_root / "index.html").read_bytes().replace(b"</head>", b'<link rel="stylesheet" href="/modern.css"></head>')
             self.send_response(200)
@@ -59,28 +169,39 @@ class APIHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-        elif self.path == "/health":
+        elif route == "/health":
             self._send_json(200, {"status": "ok", "service": "ss-seo"})
-        elif self.path == "/modern.css":
+        elif route == "/modern.css":
             body = (Path(__file__).resolve().parents[2] / "web" / "modern.css").read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "text/css; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-        elif self.path == "/integrations/search-console/connect":
-            client_id = os.getenv("GOOGLE_CLIENT_ID")
-            if not client_id:
+        elif route == "/integrations/search-console/connect":
+            config = gsc.oauth_config()
+            if config is None:
                 self._send_json(503, {"error": "search_console_not_configured", "detail": "Google OAuth henüz yapılandırılmadı. Coolify'a GOOGLE_CLIENT_ID ve GOOGLE_CLIENT_SECRET eklenmeli."})
                 return
-            query = urlencode({"client_id": client_id, "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI", "https://seo.stuqio.com/integrations/search-console/callback"), "response_type": "code", "access_type": "offline", "prompt": "consent", "scope": "https://www.googleapis.com/auth/webmasters.readonly", "state": secrets.token_urlsafe(24)})
+            state = gsc.issue_state()
             self.send_response(302)
-            self.send_header("Location", f"https://accounts.google.com/o/oauth2/v2/auth?{query}")
+            self.send_header("Location", gsc.build_auth_url(config, state))
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
-        elif self.path == "/discover":
+        elif route == "/integrations/search-console/callback":
+            self._handle_gsc_callback()
+        elif route == "/integrations/search-console/status":
+            self._handle_gsc_status()
+        elif route == "/integrations/search-console/disconnect":
+            self._send_json(405, {"error": "method_not_allowed", "hint": "POST ile bağlantıyı kaldırın"})
+        elif route == "/integrations/search-console/sites":
+            self._handle_gsc_sites()
+        elif route == "/integrations/search-console/performance":
+            self._handle_gsc_performance()
+        elif route == "/discover":
             self._send_json(405, {"error": "method_not_allowed"})
-        elif self.path.startswith("/audit/status/"):
-            job_id = self.path.rsplit("/", 1)[-1]
+        elif route.startswith("/audit/status/"):
+            job_id = route.rsplit("/", 1)[-1]
             with JOBS_LOCK:
                 job = JOBS.get(job_id)
                 if job is None:
@@ -111,6 +232,13 @@ class APIHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self) -> None:
+        if self.path == "/integrations/search-console/disconnect":
+            try:
+                removed = gsc.TokenStore().clear()
+            except OSError:
+                removed = False
+            self._send_json(200, {"connected": False, "removed": removed})
+            return
         if self.path not in {"/audit", "/audit/start", "/discover"}:
             self._send_json(404, {"error": "not_found"})
             return
