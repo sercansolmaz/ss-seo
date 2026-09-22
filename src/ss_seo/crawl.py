@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Callable
 
 from .fetcher import FetchResult, PoliteFetcher
 from .parser import HTMLObservation, parse_html
@@ -24,10 +25,17 @@ class CrawlResult:
 
 
 class Crawler:
-    def __init__(self, fetcher: PoliteFetcher | None = None, max_urls: int = 100, max_depth: int = 10):
+    def __init__(
+        self,
+        fetcher: PoliteFetcher | None = None,
+        max_urls: int = 100,
+        max_depth: int = 10,
+        progress: Callable[[dict[str, int]], None] | None = None,
+    ):
         self.fetcher = fetcher or PoliteFetcher()
         self.max_urls = max_urls
         self.max_depth = max_depth
+        self.progress = progress
 
     def crawl(self, seed_url: str) -> CrawlResult:
         seed = normalize_url(seed_url)
@@ -40,6 +48,7 @@ class Crawler:
                 fetched = self.fetcher.fetch(item.url, scope)
             except Exception as exc:  # crawl continues and records the failed URL
                 result.errors.append("%s: %s" % (item.url, exc))
+                self._report(queue, result)
                 continue
             page = CrawledPage(item=item, fetch=fetched)
             content_type = fetched.headers.get("content-type", "").lower()
@@ -53,5 +62,14 @@ class Crawler:
                     if scope.allows(normalized):
                         queue.add(CrawlItem(normalized, item.depth + 1, "internal-link"))
             result.pages.append(page)
+            self._report(queue, result)
         return result
 
+    def _report(self, queue: CrawlQueue, result: CrawlResult) -> None:
+        if self.progress is not None:
+            self.progress({
+                "scheduled": queue.scheduled_count,
+                "completed": len(result.pages) + len(result.errors),
+                "queued": len(queue),
+                "errors": len(result.errors),
+            })

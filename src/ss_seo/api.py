@@ -5,11 +5,14 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
-from .pipeline import run_audit
+from .pipeline import AuditOutput, run_audit
 
 
 def audit_payload(url: str, runner=run_audit) -> dict[str, Any]:
-    output = runner(url)
+    return payload_from_output(url, runner(url))
+
+
+def payload_from_output(url: str, output: AuditOutput) -> dict[str, Any]:
     return {
         "url": url,
         "summary": {
@@ -22,4 +25,3 @@ def audit_payload(url: str, runner=run_audit) -> dict[str, Any]:
         "roadmap": [asdict(item) for item in output.roadmap],
         "errors": output.crawl.errors,
     }
-

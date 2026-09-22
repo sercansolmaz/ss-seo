@@ -29,13 +29,33 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const result = document.querySelector('#result'); result.hidden = false;
-      document.querySelector('#issues').textContent = 'Running audit...';
-      const response = await fetch('/audit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: document.querySelector('#url').value}) });
-      const data = await response.json();
-      if (!response.ok) { document.querySelector('#issues').textContent = data.error || 'Audit failed'; return; }
-      document.querySelector('#stats').innerHTML = Object.entries(data.summary).map(([key, value]) => `<div class="stat"><div class="muted">${key.replaceAll('_', ' ')}</div><div class="number">${value}</div></div>`).join('');
-      document.querySelector('#issues').textContent = data.issues.map(item => `${item.rule_id} [${item.severity}] ${item.url}\nEvidence: ${JSON.stringify(item.evidence)}`).join('\n\n') || 'No issues found';
-      document.querySelector('#roadmap').textContent = data.roadmap.map(item => `Phase ${item.phase}: ${item.title} — ${item.reason}`).join('\n') || 'No roadmap items';
+      const started = Date.now();
+      const status = document.querySelector('#issues');
+      status.textContent = 'Starting crawler...';
+      const ticker = setInterval(() => { status.textContent = `Crawler is starting (${Math.round((Date.now() - started) / 1000)}s)...`; }, 1000);
+      try {
+        const response = await fetch('/audit/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: document.querySelector('#url').value}) });
+        const job = await response.json();
+        if (!response.ok) { throw new Error(job.error || 'Audit could not start'); }
+        let data;
+        while (true) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const poll = await fetch(`/audit/status/${job.job_id}`);
+          const state = await poll.json();
+          if (!poll.ok) { throw new Error(state.error || 'Audit status unavailable'); }
+          const progress = state.progress || {};
+          status.textContent = state.status === 'completed'
+            ? 'Audit completed.'
+            : `Crawler is running — ${progress.completed || 0}/${progress.scheduled || 0} pages scanned, ${progress.queued || 0} queued, ${progress.errors || 0} errors`;
+          if (state.status === 'completed') { data = state.result; break; }
+          if (state.status === 'failed') { throw new Error(state.error || 'Audit failed'); }
+        }
+        document.querySelector('#stats').innerHTML = Object.entries(data.summary).map(([key, value]) => `<div class="stat"><div class="muted">${key.replaceAll('_', ' ')}</div><div class="number">${value}</div></div>`).join('');
+        document.querySelector('#issues').textContent = data.issues.map(item => `${item.rule_id} [${item.severity}] ${item.url}\nEvidence: ${JSON.stringify(item.evidence)}`).join('\n\n') || 'No issues found';
+        document.querySelector('#roadmap').textContent = data.roadmap.map(item => `Phase ${item.phase}: ${item.title} — ${item.reason}`).join('\n') || 'No roadmap items';
+      } catch (error) {
+        status.textContent = `Audit failed: ${error.message}`;
+      } finally { clearInterval(ticker); }
     });
   </script>
 </body>
