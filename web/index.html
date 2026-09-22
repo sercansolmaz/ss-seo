@@ -21,11 +21,26 @@
   <header><div class="brand">SS SEO Intelligence</div><div class="muted">MVP local dashboard</div></header>
   <section class="card">
     <h2>New Audit</h2><p class="muted">Enter an owned domain to run a bounded audit.</p>
-    <form id="audit-form"><input id="url" type="url" placeholder="https://example.com" required><button>Run Audit</button></form>
+    <form id="audit-form"><input id="url" type="url" placeholder="https://example.com" required><select id="max-urls"><option value="100">100 pages</option><option value="500">500 pages</option><option value="1000">1,000 pages</option><option value="5000">5,000 pages</option></select><button>Run Audit</button></form>
+    <p id="discovery" class="muted"></p>
   </section>
   <section id="result" class="card" hidden><h2>Audit Overview</h2><div id="stats" class="stats"></div><h3>Issues</h3><pre id="issues"></pre><h3>Fix Roadmap</h3><pre id="roadmap"></pre></section>
   <script>
     const form = document.querySelector('#audit-form');
+    const urlInput = document.querySelector('#url');
+    const discovery = document.querySelector('#discovery');
+    let discoveryTimer;
+    urlInput.addEventListener('change', async () => {
+      clearTimeout(discoveryTimer);
+      discoveryTimer = setTimeout(async () => {
+        discovery.textContent = 'Checking sitemap size...';
+        try {
+          const response = await fetch('/discover', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: urlInput.value}) });
+          const data = await response.json();
+          discovery.textContent = response.ok ? `Quick discovery: ${data.sitemap_count} unique URLs found in sitemap files.` : `Discovery failed: ${data.detail || data.error}`;
+        } catch (error) { discovery.textContent = `Discovery failed: ${error.message}`; }
+      }, 250);
+    });
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const result = document.querySelector('#result'); result.hidden = false;
@@ -34,7 +49,7 @@
       status.textContent = 'Starting crawler...';
       const ticker = setInterval(() => { status.textContent = `Crawler is starting (${Math.round((Date.now() - started) / 1000)}s)...`; }, 1000);
       try {
-        const response = await fetch('/audit/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: document.querySelector('#url').value}) });
+        const response = await fetch('/audit/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: document.querySelector('#url').value, max_urls: Number(document.querySelector('#max-urls').value)}) });
         const job = await response.json();
         if (!response.ok) { throw new Error(job.error || 'Audit could not start'); }
         let data;
@@ -51,7 +66,9 @@
           if (state.status === 'failed') { throw new Error(state.error || 'Audit failed'); }
         }
         document.querySelector('#stats').innerHTML = Object.entries(data.summary).map(([key, value]) => `<div class="stat"><div class="muted">${key.replaceAll('_', ' ')}</div><div class="number">${value}</div></div>`).join('');
+        const broken = data.broken_links || [];
         document.querySelector('#issues').textContent = data.issues.map(item => `${item.rule_id} [${item.severity}] ${item.url}\nEvidence: ${JSON.stringify(item.evidence)}`).join('\n\n') || 'No issues found';
+        if (broken.length) document.querySelector('#issues').textContent += `\n\n404 BROKEN LINKS (${broken.length})\n` + broken.map(item => `${item.url} ← ${item.source_url || 'sitemap/seed'}`).join('\n');
         document.querySelector('#roadmap').textContent = data.roadmap.map(item => `Phase ${item.phase}: ${item.title} — ${item.reason}`).join('\n') || 'No roadmap items';
       } catch (error) {
         status.textContent = `Audit failed: ${error.message}`;

@@ -11,6 +11,7 @@ class CrawlItem:
     url: str
     depth: int = 0
     source: str = "seed"
+    source_url: str | None = None
 
 
 class CrawlQueue:
@@ -36,4 +37,3 @@ class CrawlQueue:
     @property
     def scheduled_count(self) -> int:
         return len(self._seen)
-

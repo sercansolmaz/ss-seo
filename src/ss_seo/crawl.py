@@ -60,7 +60,7 @@ class Crawler:
                     except ValueError:
                         continue
                     if scope.allows(normalized):
-                        queue.add(CrawlItem(normalized, item.depth + 1, "internal-link"))
+                        queue.add(CrawlItem(normalized, item.depth + 1, "internal-link", item.url))
             result.pages.append(page)
             self._report(queue, result)
         return result

@@ -10,7 +10,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .api import audit_payload, payload_from_output
 from .crawl import Crawler
+from .discovery import robots_url, sitemap_candidates, sitemap_links
+from .fetcher import PoliteFetcher
 from .pipeline import run_audit
+from .url_policy import CrawlScope, normalize_url
 
 
 JOBS: dict[str, dict] = {}
@@ -28,7 +31,8 @@ def _run_job(job_id: str, url: str) -> None:
 
     _update_job(job_id, status="running")
     try:
-        output = run_audit(url, crawler=Crawler(progress=progress))
+        max_urls = JOBS[job_id].get("max_urls", 100)
+        output = run_audit(url, crawler=Crawler(max_urls=max_urls, progress=progress))
         _update_job(job_id, status="completed", result=payload_from_output(url, output))
     except Exception as exc:  # keep the worker alive and expose a useful UI error
         _update_job(job_id, status="failed", error=str(exc))
@@ -53,6 +57,8 @@ class APIHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/health":
             self._send_json(200, {"status": "ok", "service": "ss-seo"})
+        elif self.path == "/discover":
+            self._send_json(405, {"error": "method_not_allowed"})
         elif self.path.startswith("/audit/status/"):
             job_id = self.path.rsplit("/", 1)[-1]
             with JOBS_LOCK:
@@ -85,7 +91,7 @@ class APIHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self) -> None:
-        if self.path not in {"/audit", "/audit/start"}:
+        if self.path not in {"/audit", "/audit/start", "/discover"}:
             self._send_json(404, {"error": "not_found"})
             return
         try:
@@ -95,12 +101,30 @@ class APIHandler(BaseHTTPRequestHandler):
             if self.path == "/audit":
                 self._send_json(200, audit_payload(url))
                 return
+            if self.path == "/discover":
+                seed = normalize_url(url)
+                scope = CrawlScope(hostname=seed.split("/", 3)[2].split(":", 1)[0])
+                fetcher = PoliteFetcher()
+                robots = fetcher.fetch(robots_url(seed), scope)
+                candidates = sitemap_candidates(seed, robots.body)
+                sitemap_urls = []
+                for candidate in candidates:
+                    result = fetcher.fetch(candidate, scope)
+                    if result.status_code == 200 and result.body:
+                        sitemap_urls.extend(sitemap_links(result.body))
+                unique_urls = sorted(set(sitemap_urls))
+                self._send_json(200, {"url": seed, "sitemap_count": len(unique_urls), "sitemap_urls": unique_urls[:5000]})
+                return
             job_id = uuid.uuid4().hex
+            max_urls = int(payload.get("max_urls", 100))
+            if max_urls not in {100, 500, 1000, 5000}:
+                raise ValueError("max_urls must be 100, 500, 1000, or 5000")
             with JOBS_LOCK:
                 JOBS[job_id] = {
                     "job_id": job_id,
                     "status": "queued",
                     "progress": {"scheduled": 0, "completed": 0, "queued": 0, "errors": 0},
+                    "max_urls": max_urls,
                 }
             threading.Thread(target=_run_job, args=(job_id, url), daemon=True).start()
             self._send_json(202, {"job_id": job_id, "status": "queued"})

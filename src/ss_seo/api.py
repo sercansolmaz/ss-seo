@@ -24,4 +24,9 @@ def payload_from_output(url: str, output: AuditOutput) -> dict[str, Any]:
         "issues": [asdict(issue) for issue in output.issues],
         "roadmap": [asdict(item) for item in output.roadmap],
         "errors": output.crawl.errors,
+        "broken_links": [
+            {"url": page.item.url, "source_url": page.item.source_url}
+            for page in output.crawl.pages
+            if page.fetch.status_code == 404
+        ],
     }
