@@ -1,79 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="tr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SS SEO Intelligence</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #0b1020; color: #eef2ff; }
-    body { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-    .brand { font-size: 24px; font-weight: 700; } .muted { color: #9ba5c3; }
-    .card { background: #151d34; border: 1px solid #293452; border-radius: 14px; padding: 20px; margin-bottom: 18px; }
-    form { display: flex; gap: 10px; } input { flex: 1; background: #0f162a; color: inherit; border: 1px solid #354264; border-radius: 8px; padding: 12px; }
-    button { background: #6d7cff; border: 0; color: white; border-radius: 8px; padding: 12px 18px; cursor: pointer; font-weight: 600; }
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; } .stat { background: #0f162a; padding: 16px; border-radius: 10px; }
-    .number { font-size: 26px; font-weight: 700; margin-top: 8px; } pre { white-space: pre-wrap; color: #c5d0ef; }
-    @media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } form { flex-direction: column; } }
+    :root{font-family:Inter,system-ui,sans-serif;color:#e8eefc;background:#080d19;color-scheme:dark;--panel:#111a2c;--line:#22304a;--muted:#8d9bb8;--blue:#7185ff;--green:#35d39b;--red:#ff6b7d}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% 0,#172553 0,transparent 32%),#080d19}.app{display:flex;min-height:100vh}.side{width:250px;padding:28px 18px;border-right:1px solid var(--line);background:#0b1221}.logo{font-size:20px;font-weight:800;padding:0 12px 34px}.logo span{color:var(--blue)}.section-label{font-size:11px;color:#62718f;text-transform:uppercase;letter-spacing:.12em;padding:18px 12px 8px}.nav{display:block;width:100%;border:0;background:transparent;color:var(--muted);text-align:left;padding:12px;border-radius:9px;cursor:pointer;font-size:14px}.nav:hover,.nav.active{background:#182442;color:#fff}.nav.active{box-shadow:inset 3px 0 var(--blue)}.main{flex:1;max-width:1400px;padding:34px 44px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}.eyebrow{color:var(--blue);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.12em}.top h1{font-size:30px;margin:7px 0}.muted{color:var(--muted)}.pill{border:1px solid var(--line);border-radius:99px;padding:8px 12px;color:var(--muted);font-size:12px}.view{display:none}.view.active{display:block}.hero{display:flex;justify-content:space-between;gap:24px;align-items:center;background:linear-gradient(135deg,#16264a,#111a2c 65%);border:1px solid #2d4270;border-radius:18px;padding:26px;margin-bottom:22px}.hero h2{margin:0 0 8px;font-size:22px}.audit-form{display:flex;gap:10px;min-width:48%;justify-content:flex-end}.audit-form input,.audit-form select{background:#0b1324;color:#fff;border:1px solid #34466a;border-radius:9px;padding:12px}.audit-form input{min-width:240px;flex:1}.button{border:0;border-radius:9px;padding:12px 16px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}.button.secondary{background:#1c2b48}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:rgba(17,26,44,.9);border:1px solid var(--line);border-radius:14px;padding:19px}.stat-label{color:var(--muted);font-size:12px}.stat-value{font-size:30px;font-weight:800;margin:10px 0 4px}.good{color:var(--green)}.bad{color:var(--red)}.layout{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:18px}.card h3{margin:0 0 15px}.row{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);font-size:13px}.empty{padding:35px 0;text-align:center;color:var(--muted)}.progress,.note{color:var(--muted);font-size:13px;line-height:1.6}pre{white-space:pre-wrap;color:#c8d3ee;line-height:1.6;font-size:13px;max-height:500px;overflow:auto}.gsc{border:1px dashed #45608e;background:#0f1a30}
+    @media(max-width:900px){.side{width:205px}.main{padding:24px}.hero{display:block}.audit-form{margin-top:20px;justify-content:stretch}.grid{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}}@media(max-width:620px){.app{display:block}.side{width:100%;padding:15px;border-right:0;border-bottom:1px solid var(--line)}.logo{padding:8px 10px 14px}.section-label{display:none}.nav{display:inline-block;width:auto;padding:9px}.main{padding:20px 14px}.top h1{font-size:24px}.audit-form{display:grid;grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}}
   </style>
 </head>
-<body>
-  <header><div class="brand">SS SEO Intelligence</div><div class="muted">MVP local dashboard</div></header>
-  <section class="card">
-    <h2>New Audit</h2><p class="muted">Enter an owned domain to run a bounded audit.</p>
-    <form id="audit-form"><input id="url" type="url" placeholder="https://example.com" required><select id="max-urls"><option value="100">100 pages</option><option value="500">500 pages</option><option value="1000">1,000 pages</option><option value="5000">5,000 pages</option></select><button>Run Audit</button></form>
-    <p id="discovery" class="muted"></p>
-  </section>
-  <section id="result" class="card" hidden><h2>Audit Overview</h2><div id="stats" class="stats"></div><h3>Issues</h3><pre id="issues"></pre><h3>Fix Roadmap</h3><pre id="roadmap"></pre></section>
-  <script>
-    const form = document.querySelector('#audit-form');
-    const urlInput = document.querySelector('#url');
-    const discovery = document.querySelector('#discovery');
-    let discoveryTimer;
-    urlInput.addEventListener('change', async () => {
-      clearTimeout(discoveryTimer);
-      discoveryTimer = setTimeout(async () => {
-        discovery.textContent = 'Checking sitemap size...';
-        try {
-          const response = await fetch('/discover', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: urlInput.value}) });
-          const data = await response.json();
-          discovery.textContent = response.ok ? `Quick discovery: ${data.sitemap_count} unique URLs found in sitemap files.` : `Discovery failed: ${data.detail || data.error}`;
-        } catch (error) { discovery.textContent = `Discovery failed: ${error.message}`; }
-      }, 250);
-    });
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const result = document.querySelector('#result'); result.hidden = false;
-      const started = Date.now();
-      const status = document.querySelector('#issues');
-      status.textContent = 'Starting crawler...';
-      const ticker = setInterval(() => { status.textContent = `Crawler is starting (${Math.round((Date.now() - started) / 1000)}s)...`; }, 1000);
-      try {
-        const response = await fetch('/audit/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: document.querySelector('#url').value, max_urls: Number(document.querySelector('#max-urls').value)}) });
-        const job = await response.json();
-        if (!response.ok) { throw new Error(job.error || 'Audit could not start'); }
-        let data;
-        while (true) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const poll = await fetch(`/audit/status/${job.job_id}`);
-          const state = await poll.json();
-          if (!poll.ok) { throw new Error(state.error || 'Audit status unavailable'); }
-          const progress = state.progress || {};
-          status.textContent = state.status === 'completed'
-            ? 'Audit completed.'
-            : `Crawler is running — ${progress.completed || 0}/${progress.scheduled || 0} pages scanned, ${progress.queued || 0} queued, ${progress.errors || 0} errors`;
-          if (state.status === 'completed') { data = state.result; break; }
-          if (state.status === 'failed') { throw new Error(state.error || 'Audit failed'); }
-        }
-        document.querySelector('#stats').innerHTML = Object.entries(data.summary).map(([key, value]) => `<div class="stat"><div class="muted">${key.replaceAll('_', ' ')}</div><div class="number">${value}</div></div>`).join('');
-        const broken = data.broken_links || [];
-        document.querySelector('#issues').textContent = data.issues.map(item => `${item.rule_id} [${item.severity}] ${item.url}\nEvidence: ${JSON.stringify(item.evidence)}`).join('\n\n') || 'No issues found';
-        if (broken.length) document.querySelector('#issues').textContent += `\n\n404 BROKEN LINKS (${broken.length})\n` + broken.map(item => `${item.url} ← ${item.source_url || 'sitemap/seed'}`).join('\n');
-        document.querySelector('#roadmap').textContent = data.roadmap.map(item => `Phase ${item.phase}: ${item.title} — ${item.reason}`).join('\n') || 'No roadmap items';
-      } catch (error) {
-        status.textContent = `Audit failed: ${error.message}`;
-      } finally { clearInterval(ticker); }
-    });
-  </script>
-</body>
-</html>
+<body><div class="app"><aside class="side"><div class="logo">SS <span>SEO</span> Hospital</div><div class="section-label">Workspace</div><button class="nav active" data-view="overview">◈ Genel Bakış</button><button class="nav" data-view="technical">⌁ Teknik SEO</button><button class="nav" data-view="content">✦ İçerik</button><button class="nav" data-view="links">↗ Bağlantılar</button><div class="section-label">Data & AI</div><button class="nav" data-view="gsc">◉ Search Console</button><button class="nav" data-view="jev">✺ Jev Analizi</button><button class="nav" data-view="history">◷ Geçmiş</button></aside>
+<main class="main"><header class="top"><div><div class="eyebrow">SEO sağlık merkezi</div><h1 id="page-title">Genel Bakış</h1><div class="muted">Sitenizin sorunlarını bulun, tedavi sırasını görün.</div></div><div class="pill">● Sistem hazır</div></header>
+<section id="overview" class="view active"><div class="hero"><div><h2>Yeni site muayenesi</h2><div class="muted">Alan adınızı girin; teknik tarama ve tedavi planını başlatalım.</div><div id="discovery" class="progress"></div></div><form id="audit-form" class="audit-form"><input id="url" type="url" placeholder="https://example.com" required><select id="max-urls"><option value="100">100 sayfa</option><option value="500">500 sayfa</option><option value="1000">1.000 sayfa</option><option value="5000">5.000 sayfa</option></select><button class="button">Muayeneyi Başlat</button></form></div><div id="stats" class="grid"><div class="card"><div class="stat-label">Taranan sayfa</div><div class="stat-value">—</div><div class="muted">Henüz audit yok</div></div><div class="card"><div class="stat-label">Açık sorun</div><div class="stat-value">—</div><div class="muted">Sonuç bekleniyor</div></div><div class="card"><div class="stat-label">Kırık bağlantı</div><div class="stat-value">—</div><div class="muted">404 kontrolü</div></div><div class="card"><div class="stat-label">Tedavi fazı</div><div class="stat-value">—</div><div class="muted">Önceliklendirme</div></div></div><div class="layout"><div class="card"><h3>Son teşhis</h3><div id="issues" class="empty">Bir audit başlattığınızda sorunlar burada görünecek.</div></div><div class="card"><h3>Tedavi planı</h3><pre id="roadmap" class="empty">Öncelikli düzeltmeler burada listelenecek.</pre></div></div></section>
+<section id="technical" class="view"><div class="card"><h3>Teknik SEO</h3><p class="note">404, yönlendirme, canonical, robots.txt, sitemap ve indekslenebilirlik kontrolleri burada gruplanacak. Audit çalıştırdıktan sonra teknik bulgular bu ekrana taşınır.</p><div class="grid"><div class="card"><div class="stat-label">404 URL</div><div class="stat-value bad" id="technical-404">—</div></div><div class="card"><div class="stat-label">Sitemap URL</div><div class="stat-value">—</div></div></div></div></section>
+<section id="content" class="view"><div class="card"><h3>İçerik muayenesi</h3><p class="note">Başlık, meta açıklama, H1, tekrar eden içerik ve arama amacı bulguları burada yayınlanacak. Jev’in yorumları teknik kanıtlardan ayrı gösterilecek.</p></div></section><section id="links" class="view"><div class="card"><h3>Bağlantı merkezi</h3><p class="note">Kırık internal linkleri, orphan sayfaları ve iç link fırsatlarını kaynak sayfalarıyla birlikte takip edin.</p></div></section>
+<section id="gsc" class="view"><div class="card gsc"><h3>Google Search Console</h3><p class="note"><strong>Search Console verilerini bağlayın.</strong><br>Clicks, impressions, CTR, average position, queries ve page performance verilerini teknik audit ile karşılaştıracağız.</p><button class="button secondary" type="button" onclick="alert('Google OAuth bağlantısı sonraki adımda etkinleştirilecek.')">Search Console’u Bağla</button><p class="muted">Bağlantı açıldığında Google hesabınızdan yetki vermeniz gerekecek.</p></div></section><section id="jev" class="view"><div class="card"><h3>Jev SEO Analizi</h3><p class="note">Jev, crawler’ın ölçtüğü kanıtları yorumlar; içerik kalitesi, arama amacı, öncelik ve uygulanabilir tedavi önerileri üretir.</p><div class="empty">Audit sonuçlarından sonra Jev değerlendirmesi burada görünecek.</div></div></section><section id="history" class="view"><div class="card"><h3>Muayene geçmişi</h3><p class="note">Önceki taramalar, çözülen sorunlar ve sağlık skorundaki değişim burada tutulacak.</p><div class="empty">Henüz kayıtlı audit yok.</div></div></section>
+</main></div>
+<script>
+const navs=document.querySelectorAll('.nav'),views=document.querySelectorAll('.view'),title=document.querySelector('#page-title'),labels={overview:'Genel Bakış',technical:'Teknik SEO',content:'İçerik',links:'Bağlantılar',gsc:'Search Console',jev:'Jev Analizi',history:'Geçmiş'};navs.forEach(n=>n.addEventListener('click',()=>{navs.forEach(x=>x.classList.remove('active'));n.classList.add('active');views.forEach(v=>v.classList.toggle('active',v.id===n.dataset.view));title.textContent=labels[n.dataset.view]}));
+const form=document.querySelector('#audit-form'),urlInput=document.querySelector('#url'),discovery=document.querySelector('#discovery');urlInput.addEventListener('change',async()=>{discovery.textContent='Sitemap boyutu kontrol ediliyor...';try{const r=await fetch('/discover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:urlInput.value})}),d=await r.json();discovery.textContent=r.ok?`Hızlı keşif: sitemap dosyalarında ${d.sitemap_count} benzersiz URL bulundu.`:`Keşif başarısız: ${d.detail||d.error}`}catch(e){discovery.textContent=`Keşif başarısız: ${e.message}`} });
+form.addEventListener('submit',async e=>{e.preventDefault();const issue=document.querySelector('#issues'),started=Date.now();issue.className='';issue.textContent='Tarama başlatılıyor...';const ticker=setInterval(()=>issue.textContent=`Tarama sürüyor (${Math.round((Date.now()-started)/1000)} sn)...`,1000);try{const r=await fetch('/audit/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:urlInput.value,max_urls:Number(document.querySelector('#max-urls').value)})}),job=await r.json();if(!r.ok)throw Error(job.error||'Audit başlatılamadı');let data;while(true){await new Promise(x=>setTimeout(x,1000));const p=await fetch(`/audit/status/${job.job_id}`),s=await p.json();if(!p.ok)throw Error(s.error||'Durum alınamadı');const x=s.progress||{};issue.textContent=s.status==='completed'?'Muayene tamamlandı.':`Tarama sürüyor — ${x.completed||0}/${x.scheduled||0} sayfa, ${x.queued||0} kuyrukta, ${x.errors||0} hata`;if(s.status==='completed'){data=s.result;break}if(s.status==='failed')throw Error(s.error||'Audit başarısız')}const a=data.summary;document.querySelector('#stats').innerHTML=`<div class="card"><div class="stat-label">Taranan sayfa</div><div class="stat-value">${a.pages_crawled}</div><div class="muted">Bu audit</div></div><div class="card"><div class="stat-label">Açık sorun</div><div class="stat-value ${a.issues?'bad':'good'}">${a.issues}</div><div class="muted">Kural bulguları</div></div><div class="card"><div class="stat-label">Kırık bağlantı</div><div class="stat-value ${data.broken_links.length?'bad':'good'}">${data.broken_links.length}</div><div class="muted">404 kontrolü</div></div><div class="card"><div class="stat-label">Tedavi fazı</div><div class="stat-value">${a.roadmap_phases}</div><div class="muted">Öncelikli plan</div></div>`;issue.textContent=data.issues.map(i=>`${i.rule_id} [${i.severity}] ${i.url}\nKanıt: ${JSON.stringify(i.evidence)}`).join('\n\n')||'Sorun bulunamadı';if(data.broken_links.length)issue.textContent+=`\n\n404 BAĞLANTILAR (${data.broken_links.length})\n`+data.broken_links.map(i=>`${i.url} ← ${i.source_url||'sitemap/seed'}`).join('\n');document.querySelector('#roadmap').textContent=data.roadmap.map(i=>`Faz ${i.phase}: ${i.title} — ${i.reason}`).join('\n')||'Tedavi önerisi yok';document.querySelector('#technical-404').textContent=data.broken_links.length}catch(err){issue.textContent=`Muayene başarısız: ${err.message}`}finally{clearInterval(ticker)}});
+</script></body></html>
