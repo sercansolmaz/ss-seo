@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
+import secrets
 import threading
 import uuid
+from urllib.parse import urlencode
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -57,6 +60,15 @@ class APIHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/health":
             self._send_json(200, {"status": "ok", "service": "ss-seo"})
+        elif self.path == "/integrations/search-console/connect":
+            client_id = os.getenv("GOOGLE_CLIENT_ID")
+            if not client_id:
+                self._send_json(503, {"error": "search_console_not_configured", "detail": "Google OAuth henüz yapılandırılmadı. Coolify'a GOOGLE_CLIENT_ID ve GOOGLE_CLIENT_SECRET eklenmeli."})
+                return
+            query = urlencode({"client_id": client_id, "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI", "https://seo.stuqio.com/integrations/search-console/callback"), "response_type": "code", "access_type": "offline", "prompt": "consent", "scope": "https://www.googleapis.com/auth/webmasters.readonly", "state": secrets.token_urlsafe(24)})
+            self.send_response(302)
+            self.send_header("Location", f"https://accounts.google.com/o/oauth2/v2/auth?{query}")
+            self.end_headers()
         elif self.path == "/discover":
             self._send_json(405, {"error": "method_not_allowed"})
         elif self.path.startswith("/audit/status/"):
