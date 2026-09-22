@@ -52,7 +52,8 @@ class APIHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path == "/":
-            body = (Path(__file__).resolve().parents[2] / "web" / "index.html").read_bytes()
+            web_root = Path(__file__).resolve().parents[2] / "web"
+            body = (web_root / "index.html").read_bytes().replace(b"</head>", b'<link rel="stylesheet" href="/modern.css"></head>')
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -60,6 +61,13 @@ class APIHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/health":
             self._send_json(200, {"status": "ok", "service": "ss-seo"})
+        elif self.path == "/modern.css":
+            body = (Path(__file__).resolve().parents[2] / "web" / "modern.css").read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/css; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         elif self.path == "/integrations/search-console/connect":
             client_id = os.getenv("GOOGLE_CLIENT_ID")
             if not client_id:
